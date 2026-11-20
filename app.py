@@ -102,7 +102,7 @@ def main():
         "2. Revisa los indicadores, los tres gráficos y la tabla, que cambian según tus filtros."
     )
 
-  df = cargar_datos("datos_supermercado_limpio.csv")
+  df = cargar_datos("datos_supermercado_limpio.csv.csv")
 
   st.sidebar.header("Filtros interactivos")
   regiones = ["Todas"] + sorted(df["Region"].dropna().unique().tolist())
