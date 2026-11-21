@@ -2,21 +2,28 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="Precios en Supermercados de Chile", layout="wide")
+# Configuración general de la página antes de dibujar componentes
+st.set_page_config(
+    page_title="Precios en Supermercados de Chile", layout="wide"
+)
 
 
 def cargar_datos(ruta_csv):
+  """Carga el CSV limpio y calcula la brecha de precio entre máximo y mínimo."""
   df = pd.read_csv(ruta_csv)
+  # Se crea la columna de brecha para medir la dispersión del precio en cada registro
   df["Brecha_precio"] = df["Precio maximo"] - df["Precio minimo"]
   return df
 
 
 def filtrar_datos(df, region, grupos, rango_precio):
+  """Aplica los filtros seleccionados en la barra lateral sin alterar el DataFrame original."""
   datos = df.copy()
   if region != "Todas":
     datos = datos[datos["Region"] == region]
   if grupos:
     datos = datos[datos["Grupo"].isin(grupos)]
+  # Filtra por el rango del deslizador según el precio promedio en pesos chilenos
   datos = datos[
       (datos["Precio promedio"] >= rango_precio[0])
       & (datos["Precio promedio"] <= rango_precio[1])
@@ -25,6 +32,7 @@ def filtrar_datos(df, region, grupos, rango_precio):
 
 
 def calcular_indicadores(datos):
+  """Calcula el precio promedio y la brecha promedio para los datos filtrados."""
   if datos.empty:
     return 0.0, 0.0
   precio_prom = datos["Precio promedio"].mean()
@@ -33,6 +41,7 @@ def calcular_indicadores(datos):
 
 
 def crear_grafico_barras(datos):
+  """Genera un gráfico de barras del precio promedio por grupo de producto."""
   promedios_grupo = (
       datos.groupby("Grupo")["Precio promedio"]
       .mean()
@@ -54,6 +63,7 @@ def crear_grafico_barras(datos):
 
 
 def crear_grafico_lineas(datos):
+  """Genera un gráfico de líneas con la evolución mensual del precio promedio."""
   promedios_mes = datos.groupby("Mes")["Precio promedio"].mean().sort_index()
   plt.figure(figsize=(8, 4))
   plt.plot(
@@ -72,6 +82,7 @@ def crear_grafico_lineas(datos):
 
 
 def crear_grafico_dispersion(datos):
+  """Genera un gráfico de dispersión entre precio mínimo y precio promedio."""
   plt.figure(figsize=(8, 4))
   plt.scatter(
       datos["Precio minimo"],
@@ -102,8 +113,10 @@ def main():
         "2. Revisa los indicadores, los tres gráficos y la tabla, que cambian según tus filtros."
     )
 
+  # Se carga el archivo CSV limpio incluido en la carpeta del proyecto
   df = cargar_datos("datos_supermercado_limpio.csv.csv")
 
+  # Controles de entrada en la barra lateral para filtrar los resultados
   st.sidebar.header("Filtros interactivos")
   regiones = ["Todas"] + sorted(df["Region"].dropna().unique().tolist())
   region_sel = st.sidebar.selectbox("Selecciona una región", regiones)
@@ -124,16 +137,17 @@ def main():
 
   datos_filtrados = filtrar_datos(df, region_sel, grupos_sel, rango_precio)
 
+  # Si no hay registros con la combinación actual, se avisa y se detiene el renderizado de gráficos/tabla
+  if datos_filtrados.empty:
+    st.warning("No hay datos para esa combinación de filtros.")
+    return
+
   st.subheader("Indicadores principales")
   precio_prom, brecha_prom = calcular_indicadores(datos_filtrados)
   col1, col2, col3 = st.columns(3)
   col1.metric("Precio promedio ($ CLP)", f"${precio_prom:,.0f}")
   col2.metric("Brecha prom. máx. - mín. ($ CLP)", f"${brecha_prom:,.0f}")
   col3.metric("Registros mostrados", f"{len(datos_filtrados):,}")
-
-  if datos_filtrados.empty:
-    st.warning("No hay datos para esa combinación de filtros.")
-    return
 
   st.subheader("Gráficos")
   g1, g2 = st.columns(2)
